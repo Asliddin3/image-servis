@@ -8,9 +8,8 @@ import (
 	"io"
 	"log"
 	"os"
-	"path/filepath"
-	"strings"
 	"sync"
+	"time"
 
 	"github.com/Asliddin3/image-servis/config"
 	"github.com/Asliddin3/image-servis/genproto/image"
@@ -33,62 +32,76 @@ func main() {
 		"laptop4.jpeg", "laptop5.jpeg",
 	}
 	imageService := image.NewImageServiceClient(conn)
+	fmt.Println("Upload file start")
+	time.Sleep(time.Second * 2)
 	var wg sync.WaitGroup
 	for i, val := range imagesStore {
 		wg.Add(1)
-		go UploadImage(i, imageService, val, wg)
+		go func(wg sync.WaitGroup, i int) {
+			UploadImage(i, imageService, val)
+			defer wg.Done()
+		}(wg, i)
 	}
-	wg.Wait()
+	fmt.Println("Upload file stop")
+	fmt.Println("Download file start")
+	time.Sleep(time.Second * 5)
 	for i, val := range imagesStore {
 		wg.Add(1)
-		go DownloadImage(i, imageService, val, wg)
+		go func(wg sync.WaitGroup, i int) {
+			DownloadImage(i, imageService, val)
+			defer wg.Done()
+		}(wg, i)
 	}
-	wg.Wait()
-	downloadFolder := "../client/download"
-	imgFolder := "../../img"
-	for _, val := range imagesStore {
-		path := fmt.Sprintf("%s/%s", downloadFolder, val)
-		err = os.Remove(path)
-		if err != nil {
-			fmt.Println("error removeing file")
-			return
-		}
-		path = fmt.Sprintf("%s/%s", imgFolder, val)
-		err = os.Remove(path)
-		if err != nil {
-			fmt.Println("error removeing file")
-			return
-		}
-	}
-	for i := 0; i < 1000; i++ {
-		wg.Add(1)
-		go GetImages(i, imageService, wg)
-	}
-	wg.Wait()
+	fmt.Println("Download file stop")
+	fmt.Println("Get images start")
+	time.Sleep(time.Second * 2)
+
+	// downloadFolder := "./download"
+	// for _, val := range imagesStore {
+	// 	path := fmt.Sprintf("%s/%s", downloadFolder, val)
+	// 	err = os.Remove(path)
+	// 	if err != nil {
+	// 		fmt.Println("error removeing file")
+	// 		return
+	// 	}
+	// 	path = fmt.Sprintf("%s/%s", downloadFolder, val)
+	// 	err = os.Remove(path)
+	// 	if err != nil {
+	// 		fmt.Println("error removeing file")
+	// 		return
+	// 	}
+	// }
+	// for i := 0; i < 1000; i++ {
+	// 	wg.Add(1)
+	// 	go func(wg sync.WaitGroup, i int) {
+	// 		GetImages(i, imageService)
+	// 		defer wg.Done()
+	// 	}(wg, i)
+	// }
+	// wg.Wait()
+	// fmt.Println("Get images stop")
 
 }
 
-func GetImages(i int, imageService image.ImageServiceClient, wg sync.WaitGroup) {
-	fmt.Printf("getImages gorutine %d start", i)
-	defer fmt.Printf("getImages gorutine %d stop", i)
-	defer wg.Done()
-	res, err := imageService.GetImages(context.Background(), &image.Empty{})
+func GetImages(i int, imageService image.ImageServiceClient) {
+	fmt.Printf("getImages gorutine %d start\n", i)
+	defer fmt.Printf("getImages gorutine %d stop\n", i)
+	_, err := imageService.GetImages(context.Background(), &image.Empty{})
 	if err != nil {
 		return
 	}
-	fmt.Println(res)
+	fmt.Printf("get images from gorutine %d\n", i)
+
 }
 
-func DownloadImage(i int, imageService image.ImageServiceClient, fileName string, wg sync.WaitGroup) {
-	fmt.Printf("download gorutine %d start", i)
-	defer fmt.Printf("download gorutine %d stop", i)
-	defer wg.Done()
-	ImageFolder := "../download"
-	imageType := filepath.Ext(fileName)
-	imageName := strings.TrimRight(fileName, imageType)
+func DownloadImage(i int, imageService image.ImageServiceClient, fileName string) {
+	fmt.Printf("download gorutine %d start\n", i)
+	defer fmt.Printf("download gorutine %d stop\n", i)
+	ImageFolder := "./download"
 	stream, err := imageService.DownloadFile(context.Background(), &image.ImageInfo{
-		ImageName: imageName,
-		ImageData: imageType})
+		FileName: fileName})
+	fmt.Printf("download gorutine %d connect\n error %v", i, err)
+
 	if err != nil {
 		fmt.Println("error downloading", err)
 		return
@@ -97,6 +110,7 @@ func DownloadImage(i int, imageService image.ImageServiceClient, fileName string
 	for {
 		err := contextError(stream.Context())
 		if err != nil {
+			fmt.Printf("error in stream %v", err)
 			break
 		}
 
@@ -112,6 +126,7 @@ func DownloadImage(i int, imageService image.ImageServiceClient, fileName string
 		chunk := req.GetChunkData()
 		_, err = imageData.Write(chunk)
 		if err != nil {
+			fmt.Printf("cannot write data to file %v\n", err)
 			break
 		}
 	}
@@ -120,9 +135,7 @@ func DownloadImage(i int, imageService image.ImageServiceClient, fileName string
 		fmt.Println("error sending msg", err)
 		return
 	}
-
-	imagePath := fmt.Sprintf("%s/%s%s", ImageFolder, imageName, imageType)
-	fmt.Println(imagePath)
+	imagePath := fmt.Sprintf("%s/%s", ImageFolder, fileName)
 	file, err := os.Create(imagePath)
 	if err != nil {
 		fmt.Println("eror creating file", err)
@@ -135,7 +148,7 @@ func DownloadImage(i int, imageService image.ImageServiceClient, fileName string
 		fmt.Println("error writing tp file")
 		return
 	}
-	savedImagePath := fmt.Sprintf("%s/%s%s", ImageFolder, imageName, imageType)
+	savedImagePath := fmt.Sprintf("%s/%s", ImageFolder, fileName)
 	fmt.Println("saved image path", savedImagePath)
 	_, err = os.Stat(savedImagePath)
 	if err != nil {
@@ -145,22 +158,19 @@ func DownloadImage(i int, imageService image.ImageServiceClient, fileName string
 
 }
 
-func UploadImage(i int, imageService image.ImageServiceClient, fileName string, wg sync.WaitGroup) {
-	fmt.Printf("upload gorutine %d start", i)
-	defer fmt.Printf("upload gorutine %d stop", i)
-	defer wg.Done()
+func UploadImage(i int, imageService image.ImageServiceClient, fileName string) {
+	fmt.Printf("upload gorutine %d start\n", i)
 	stream, err := imageService.UploadFile(context.Background())
+	fmt.Printf("upload gorutine %d connect error %v\n", i, err)
+
 	if err != nil {
 		fmt.Println("upload file err", err)
 		return
 	}
-	imageType := filepath.Ext(fileName)
-	imageName := strings.TrimRight(fileName, imageType)
 	req := &image.UploadImageRequest{
 		Request: &image.UploadImageRequest_Info{
 			Info: &image.ImageInfo{
-				ImageName: imageName,
-				ImageData: imageType,
+				FileName: fileName,
 			},
 		},
 	}
@@ -169,8 +179,8 @@ func UploadImage(i int, imageService image.ImageServiceClient, fileName string, 
 		fmt.Println("send file err", err)
 		return
 	}
-	ImageFolder := "../upload"
-	imagePath := fmt.Sprintf("%s/%s%s", ImageFolder, imageName, imageType)
+	ImageFolder := "./upload"
+	imagePath := fmt.Sprintf("%s/%s", ImageFolder, fileName)
 	fmt.Println(imagePath)
 	file, err := os.Open(imagePath)
 	if err != nil {
@@ -183,7 +193,6 @@ func UploadImage(i int, imageService image.ImageServiceClient, fileName string, 
 	for {
 		n, err := reader.Read(buffer)
 		if err == io.EOF {
-			fmt.Println("EOF in for")
 			break
 		}
 		if err != nil {
@@ -203,11 +212,11 @@ func UploadImage(i int, imageService image.ImageServiceClient, fileName string, 
 		}
 	}
 	_, err = stream.CloseAndRecv()
+	fmt.Printf("upload gorutine %d stop error %v\n", i, err)
 	if err != nil {
 		fmt.Println("cannot close stream ", err)
 		return
 	}
-
 }
 
 func contextError(ctx context.Context) error {

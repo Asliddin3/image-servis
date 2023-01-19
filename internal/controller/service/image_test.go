@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
@@ -38,23 +37,21 @@ func TestClientUploadImage(t *testing.T) {
 	imageServiceHost := "localhost"
 	imageServicePort := "7000"
 	testImageFolder := "../../../tmp"
-	imageName := "gohper"
+	fileName := "gohper.jpg"
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", imageServiceHost, imageServicePort), grpc.WithInsecure(), grpc.MaxConcurrentStreams(10))
 	require.NoError(t, err)
 	imageService := image.NewImageServiceClient(conn)
-	imagePath := fmt.Sprintf("%s/%s.jpg", testImageFolder, imageName)
+	imagePath := fmt.Sprintf("%s/%s", testImageFolder, fileName)
 	file, err := os.Open(imagePath)
 	require.NoError(t, err)
 	defer file.Close()
 	stream, err := imageService.UploadFile(context.Background())
 	require.NoError(t, err)
 
-	imageType := filepath.Ext(imagePath)
 	req := &image.UploadImageRequest{
 		Request: &image.UploadImageRequest_Info{
 			Info: &image.ImageInfo{
-				ImageName: imageName,
-				ImageData: imageType,
+				FileName: fileName,
 			},
 		},
 	}
@@ -85,7 +82,7 @@ func TestClientUploadImage(t *testing.T) {
 	}
 	_, err = stream.CloseAndRecv()
 	require.NoError(t, err)
-	savedImagePath := fmt.Sprintf("%s/%s%s", "../../../img", imageName, imageType)
+	savedImagePath := fmt.Sprintf("%s/%s", "../../../img", fileName)
 
 	require.FileExists(t, savedImagePath)
 }
@@ -97,12 +94,10 @@ func TestClientDownloadImage(t *testing.T) {
 	testImageFolder := "../../../tmp"
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", imageServiceHost, imageServicePort), grpc.WithInsecure())
 	require.NoError(t, err)
-	imageName := "laptop"
-	imageType := "jpg"
+	fileName := "laptop.jpg"
 	imageService := image.NewImageServiceClient(conn)
 	stream, err := imageService.DownloadFile(context.Background(), &image.ImageInfo{
-		ImageName: imageName,
-		ImageData: imageType})
+		FileName: fileName})
 	require.NoError(t, err)
 	imageData := bytes.Buffer{}
 	for {
@@ -132,7 +127,7 @@ func TestClientDownloadImage(t *testing.T) {
 	}
 	err = stream.CloseSend()
 	require.NoError(t, err)
-	imagePath := fmt.Sprintf("%s/%s.%s", testImageFolder, imageName, imageType)
+	imagePath := fmt.Sprintf("%s/%s", testImageFolder, fileName)
 	fmt.Println(imagePath)
 	file, err := os.Create(imagePath)
 	defer file.Close()
@@ -141,7 +136,7 @@ func TestClientDownloadImage(t *testing.T) {
 	_, err = imageData.WriteTo(file)
 
 	require.NoError(t, err)
-	savedImagePath := fmt.Sprintf("%s/%s.%s", testImageFolder, "laptop", imageType)
+	savedImagePath := fmt.Sprintf("%s/%s", testImageFolder, fileName)
 	require.FileExists(t, savedImagePath)
 	// require.NoError(t, os.Remove(savedImagePath))
 }

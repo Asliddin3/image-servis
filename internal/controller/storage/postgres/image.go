@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"fmt"
 
 	pbi "github.com/Asliddin3/image-servis/genproto/image"
 )
@@ -28,8 +27,7 @@ func (b *imageRepo) GetImages(ctx context.Context) (*pbi.ImagesInfoResponse, err
 	return imagesResp, nil
 }
 
-func (b *imageRepo) InsertOrUpdateImage(imageName, imageType string) error {
-	fileName := fmt.Sprintf("%s%s", imageName, imageType)
+func (b *imageRepo) InsertOrUpdateImage(fileName string) error {
 	res := `
 	INSERT INTO images VALUES ($1)
 	ON CONFLICT (name) DO UPDATE SET updated_at = current_timestamp;

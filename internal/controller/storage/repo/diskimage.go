@@ -7,6 +7,6 @@ import (
 )
 
 type DisckImageStore interface {
-	Save(ImageName string, ImageType string, ImageData bytes.Buffer) error
-	GetImage(ImageName, ImageType string, stream pbc.ImageService_DownloadFileServer) error
+	Save(FileName string, ImageData bytes.Buffer) error
+	GetImage(FileName string, stream pbc.ImageService_DownloadFileServer) error
 }

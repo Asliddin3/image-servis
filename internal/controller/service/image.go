@@ -26,9 +26,8 @@ func (b *ImageService) UploadFile(stream pbi.ImageService_UploadFileServer) erro
 	if err != nil {
 		return logError(status.Errorf(codes.Unknown, "cannot receive image info"))
 	}
-	imageName := req.GetInfo().GetImageName()
-	imageType := req.GetInfo().GetImageData()
-	fmt.Printf("image-name %s %s", imageName, imageType)
+	fileName := req.GetInfo().GetFileName()
+	fmt.Printf("image-file %s", fileName)
 
 	imageData := bytes.Buffer{}
 
@@ -62,12 +61,12 @@ func (b *ImageService) UploadFile(stream pbi.ImageService_UploadFileServer) erro
 		}
 	}
 	// chDone := make(chan struct{})
-	err = b.imageStore.Save(imageName, imageType, imageData)
+	err = b.imageStore.Save(fileName, imageData)
 	if err != nil {
 		return logError(status.Errorf(codes.Internal, "cannot save image in folder: %v", err))
 	}
 
-	err = b.Storage.Image().InsertOrUpdateImage(imageName, imageType)
+	err = b.Storage.Image().InsertOrUpdateImage(fileName)
 	if err != nil {
 		return logError(status.Errorf(codes.Internal, "cannot insert image to postgres %v", err))
 	}
@@ -79,7 +78,7 @@ func (b *ImageService) UploadFile(stream pbi.ImageService_UploadFileServer) erro
 }
 
 func (b *ImageService) DownloadFile(req *pbi.ImageInfo, stream pbi.ImageService_DownloadFileServer) error {
-	err := b.imageStore.GetImage(req.ImageName, req.ImageData, stream)
+	err := b.imageStore.GetImage(req.FileName, stream)
 	if err != nil {
 		return logError(status.Errorf(codes.Internal, "cannot get image from folder: %v", err))
 	}

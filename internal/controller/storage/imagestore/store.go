@@ -14,28 +14,20 @@ import (
 type DiskImageStore struct {
 	mutex       sync.RWMutex
 	imageFolder string
-	Images      map[string]*ImageInfo
-}
-type ImageInfo struct {
-	Name string
-	Type string
-	Path string
 }
 
 func NewDiskImageStore(imageFolder string) *DiskImageStore {
 	return &DiskImageStore{
 		imageFolder: imageFolder,
-		Images:      make(map[string]*ImageInfo),
 	}
 }
 
 func (store *DiskImageStore) Save(
-	imageName string,
-	imageType string,
+	fileName string,
 	imageData bytes.Buffer,
 ) error {
 
-	imagePath := fmt.Sprintf("%s/%s%s", store.imageFolder, imageName, imageType)
+	imagePath := fmt.Sprintf("%s/%s", store.imageFolder, fileName)
 	fmt.Println(imagePath)
 	file, err := os.Create(imagePath)
 	if err != nil {
@@ -50,21 +42,15 @@ func (store *DiskImageStore) Save(
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
-	store.Images[imageName] = &ImageInfo{
-		Name: imageName,
-		Type: imageType,
-		Path: imagePath,
-	}
 	return nil
 }
 
 func (store *DiskImageStore) GetImage(
-	ImageName string,
-	ImageType string,
+	FileName string,
 	stream image.ImageService_DownloadFileServer,
 ) error {
 
-	imagePath := fmt.Sprintf("%s/%s.%s", store.imageFolder, ImageName, ImageType)
+	imagePath := fmt.Sprintf("%s/%s", store.imageFolder, FileName)
 
 	file, err := os.Open(imagePath)
 	defer file.Close()
