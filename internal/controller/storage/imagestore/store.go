@@ -87,6 +87,11 @@ func (store *DiskImageStore) GetImage(
 
 		err = stream.Send(req)
 	}
+	var m interface{}
+	err = stream.SendMsg(m)
+	if err != nil {
+		return fmt.Errorf("error sending msg to stream", err)
+	}
 	store.mutex.Lock()
 	defer store.mutex.Unlock()
 

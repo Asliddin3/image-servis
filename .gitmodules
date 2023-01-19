@@ -1,0 +1,3 @@
+[submodule "image-proto"]
+	path = image-proto
+	url = git@github.com:Asliddin3/image-proto.git

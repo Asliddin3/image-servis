@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,6 +14,8 @@ import (
 	"github.com/Asliddin3/image-servis/config"
 	"github.com/Asliddin3/image-servis/genproto/image"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func main() {
@@ -28,24 +32,123 @@ func main() {
 		"laptop4.jpeg", "laptop5.jpeg",
 	}
 	imageService := image.NewImageServiceClient(conn)
-	uploadCh := make(chan struct{}, 10)
+
+	for i, val := range imagesStore {
+		go UploadImage(i, imageService, val)
+	}
+	for i, val := range imagesStore {
+		go DownloadImage(i, imageService, val)
+	}
+	downloadFolder := "../client/download"
+	imgFolder := "../../img"
 	for _, val := range imagesStore {
-		uploadCh <- struct{}{}
-		go UploadImage(uploadCh, imageService, val)
+		path := fmt.Sprintf("%s/%s", downloadFolder, val)
+		err = os.Remove(path)
+		if err != nil {
+			fmt.Println("error removeing file")
+			return
+		}
+		path = fmt.Sprintf("%s/%s", imgFolder, val)
+		err = os.Remove(path)
+		if err != nil {
+			fmt.Println("error removeing file")
+			return
+		}
+	}
+	// imagesCh := make(chan struct{}, 100)
+	for i := 0; i < 1000; i++ {
+		go GetImages(i, imageService)
 	}
 
 }
 
-func UploadImage(ch chan struct{}, imageService image.ImageServiceClient, fileName string) {
+func GetImages(i int, imageService image.ImageServiceClient) {
+	fmt.Printf("getimages gorutine %d start", i)
+	defer fmt.Printf("getimages gorutine %d stop", i)
+
+	res, err := imageService.GetImages(context.Background(), &image.Empty{})
+	if err != nil {
+		return
+	}
+	fmt.Println(res)
+}
+
+func DownloadImage(i int, imageService image.ImageServiceClient, fileName string) {
+	fmt.Printf("download gorutine %d start", i)
+	defer fmt.Printf("download gorutine %d stop", i)
+
+	ImageFolder := "../download"
+	imageType := filepath.Ext(fileName)
+	imageName := strings.TrimRight(fileName, imageType)
+	stream, err := imageService.DownloadFile(context.Background(), &image.ImageInfo{
+		ImageName: imageName,
+		ImageData: imageType})
+	if err != nil {
+		fmt.Println("error downloading", err)
+		return
+	}
+	imageData := bytes.Buffer{}
+	for {
+		err := contextError(stream.Context())
+		if err != nil {
+			break
+		}
+
+		req, err := stream.Recv()
+		if err == io.EOF {
+			fmt.Println("no more data")
+			break
+		}
+		if err != nil {
+			fmt.Printf("cannot receive chunk data %s\n", err.Error())
+			break
+		}
+		chunk := req.GetChunkData()
+		_, err = imageData.Write(chunk)
+		if err != nil {
+			break
+		}
+	}
+	err = stream.CloseSend()
+	if err != nil {
+		fmt.Println("error sending msg", err)
+		return
+	}
+
+	imagePath := fmt.Sprintf("%s/%s%s", ImageFolder, imageName, imageType)
+	fmt.Println(imagePath)
+	file, err := os.Create(imagePath)
+	if err != nil {
+		fmt.Println("eror creating file", err)
+		return
+	}
+	defer file.Close()
+
+	_, err = imageData.WriteTo(file)
+	if err != nil {
+		fmt.Println("error writing tp file")
+		return
+	}
+	savedImagePath := fmt.Sprintf("%s/%s%s", ImageFolder, imageName, imageType)
+	fmt.Println("saved image path", savedImagePath)
+	_, err = os.Stat(savedImagePath)
+	if err != nil {
+		fmt.Println("file does't exists")
+		return
+	}
+
+}
+
+func UploadImage(i int, imageService image.ImageServiceClient, fileName string) {
+	fmt.Printf("upload gorutine %d start", i)
+	defer fmt.Printf("upload gorutine %d stop", i)
 	stream, err := imageService.UploadFile(context.Background())
 	if err != nil {
 		fmt.Println("upload file err", err)
 		return
 	}
 	imageType := filepath.Ext(fileName)
-	fmt.Println(imageType)
 	imageName := strings.TrimRight(fileName, imageType)
-	fmt.Println(imageName)
 	req := &image.UploadImageRequest{
 		Request: &image.UploadImageRequest_Info{
 			Info: &image.ImageInfo{
@@ -59,7 +162,7 @@ func UploadImage(ch chan struct{}, imageService image.ImageServiceClient, fileNa
 		fmt.Println("send file err", err)
 		return
 	}
-	ImageFolder := "./tmp"
+	ImageFolder := "../upload"
 	imagePath := fmt.Sprintf("%s/%s%s", ImageFolder, imageName, imageType)
 	fmt.Println(imagePath)
 	file, err := os.Open(imagePath)
@@ -94,8 +197,26 @@ func UploadImage(ch chan struct{}, imageService image.ImageServiceClient, fileNa
 	}
 	_, err = stream.CloseAndRecv()
 	if err != nil {
-		fmt.Println("close stream ", err)
+		fmt.Println("cannot close stream ", err)
 		return
 	}
-	<-ch
+
+}
+
+func contextError(ctx context.Context) error {
+	switch ctx.Err() {
+	case context.Canceled:
+		return logError(status.Error(codes.Canceled, "request is canceled"))
+	case context.DeadlineExceeded:
+		return logError(status.Error(codes.DeadlineExceeded, "deadline is exceeded"))
+	default:
+		return nil
+	}
+}
+
+func logError(err error) error {
+	if err != nil {
+		log.Print(err)
+	}
+	return err
 }

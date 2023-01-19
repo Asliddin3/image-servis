@@ -5,7 +5,9 @@ go 1.18
 require (
 	github.com/Masterminds/squirrel v1.5.3
 	github.com/golang/protobuf v1.5.2
+	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/jackc/pgx/v4 v4.17.2
+	github.com/juju/ratelimit v1.0.2
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cast v1.5.0
 	github.com/stretchr/testify v1.8.1
