@@ -22,7 +22,7 @@ func main() {
 		fmt.Println("dial error", err)
 		return
 	}
-	imagesStore := []string{"laptop0.jpg", "gohper.jpg",
+	imagesStore := []string{"laptop0.jpg", "gopher.jpg",
 		"gopher1.png", "gopher2.jpeg", "gopher3.jpeg", "gopher4.png",
 		"gopher5.png", "laptop1.jpeg", "laptop2.jpeg", "laptop3.jpeg",
 		"laptop4.jpeg", "laptop5.jpeg",
