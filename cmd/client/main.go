@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/Asliddin3/image-servis/config"
 	"github.com/Asliddin3/image-servis/genproto/image"
@@ -32,13 +33,17 @@ func main() {
 		"laptop4.jpeg", "laptop5.jpeg",
 	}
 	imageService := image.NewImageServiceClient(conn)
-
+	var wg sync.WaitGroup
 	for i, val := range imagesStore {
-		go UploadImage(i, imageService, val)
+		wg.Add(1)
+		go UploadImage(i, imageService, val, wg)
 	}
+	wg.Wait()
 	for i, val := range imagesStore {
-		go DownloadImage(i, imageService, val)
+		wg.Add(1)
+		go DownloadImage(i, imageService, val, wg)
 	}
+	wg.Wait()
 	downloadFolder := "../client/download"
 	imgFolder := "../../img"
 	for _, val := range imagesStore {
@@ -55,17 +60,18 @@ func main() {
 			return
 		}
 	}
-	// imagesCh := make(chan struct{}, 100)
 	for i := 0; i < 1000; i++ {
-		go GetImages(i, imageService)
+		wg.Add(1)
+		go GetImages(i, imageService, wg)
 	}
+	wg.Wait()
 
 }
 
-func GetImages(i int, imageService image.ImageServiceClient) {
-	fmt.Printf("getimages gorutine %d start", i)
-	defer fmt.Printf("getimages gorutine %d stop", i)
-
+func GetImages(i int, imageService image.ImageServiceClient, wg sync.WaitGroup) {
+	fmt.Printf("getImages gorutine %d start", i)
+	defer fmt.Printf("getImages gorutine %d stop", i)
+	defer wg.Done()
 	res, err := imageService.GetImages(context.Background(), &image.Empty{})
 	if err != nil {
 		return
@@ -73,10 +79,10 @@ func GetImages(i int, imageService image.ImageServiceClient) {
 	fmt.Println(res)
 }
 
-func DownloadImage(i int, imageService image.ImageServiceClient, fileName string) {
+func DownloadImage(i int, imageService image.ImageServiceClient, fileName string, wg sync.WaitGroup) {
 	fmt.Printf("download gorutine %d start", i)
 	defer fmt.Printf("download gorutine %d stop", i)
-
+	defer wg.Done()
 	ImageFolder := "../download"
 	imageType := filepath.Ext(fileName)
 	imageName := strings.TrimRight(fileName, imageType)
@@ -139,9 +145,10 @@ func DownloadImage(i int, imageService image.ImageServiceClient, fileName string
 
 }
 
-func UploadImage(i int, imageService image.ImageServiceClient, fileName string) {
+func UploadImage(i int, imageService image.ImageServiceClient, fileName string, wg sync.WaitGroup) {
 	fmt.Printf("upload gorutine %d start", i)
 	defer fmt.Printf("upload gorutine %d stop", i)
+	defer wg.Done()
 	stream, err := imageService.UploadFile(context.Background())
 	if err != nil {
 		fmt.Println("upload file err", err)
