@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/joho/godotenv"
@@ -42,7 +41,6 @@ func LoadConfig() *Config {
 
 func getOrReturnDefault(key string, defaultValue interface{}) interface{} {
 	_, exists := os.LookupEnv(key)
-	fmt.Println(exists)
 	if exists {
 		return os.Getenv(key)
 	}

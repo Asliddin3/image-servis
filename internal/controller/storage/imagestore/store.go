@@ -11,22 +11,31 @@ import (
 	"github.com/Asliddin3/image-servis/genproto/image"
 )
 
+/*DiskImageStore this struct
+have mutex for working with  disc
+and imageFolder
+*/
 type DiskImageStore struct {
 	mutex       sync.RWMutex
 	imageFolder string
 }
 
+/*NewDiskImageStore this func used
+for declaration imageFolder and mutex
+*/
 func NewDiskImageStore(imageFolder string) *DiskImageStore {
 	return &DiskImageStore{
 		imageFolder: imageFolder,
 	}
 }
 
+/*Save This func save file in disc
+ */
 func (store *DiskImageStore) Save(
 	fileName string,
 	imageData bytes.Buffer,
 ) error {
-
+	store.mutex.Lock()
 	imagePath := fmt.Sprintf("%s/%s", store.imageFolder, fileName)
 	fmt.Println(imagePath)
 	file, err := os.Create(imagePath)
@@ -38,13 +47,14 @@ func (store *DiskImageStore) Save(
 	if err != nil {
 		return fmt.Errorf("cannot write image to file: %w", err)
 	}
-
-	store.mutex.Lock()
 	defer store.mutex.Unlock()
 
 	return nil
 }
 
+/*GetImage This func get images from disc
+and send to stream
+*/
 func (store *DiskImageStore) GetImage(
 	FileName string,
 	stream image.ImageService_DownloadFileServer,
@@ -76,7 +86,7 @@ func (store *DiskImageStore) GetImage(
 	var m interface{}
 	err = stream.SendMsg(m)
 	if err != nil {
-		return fmt.Errorf("error sending msg to stream", err)
+		return fmt.Errorf("error sending msg to stream %v", err)
 	}
 	store.mutex.Lock()
 	defer store.mutex.Unlock()

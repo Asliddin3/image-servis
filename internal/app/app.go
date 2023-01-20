@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	gatherTime        = 1 * time.Second
+	gatherTime        = 2 * time.Second
 	maxUploadDownload = 10
 	maxGettingImages  = 100
 )

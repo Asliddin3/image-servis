@@ -8,7 +8,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/Asliddin3/image-servis/config"
@@ -37,37 +36,31 @@ func main() {
 	for i, val := range imagesStore {
 		go UploadImage(i, imageService, val)
 	}
-	fmt.Println("Upload file stop")
-	fmt.Println("Download file start")
+	fmt.Println("Uploading files stop")
+	fmt.Println("Downloading files start")
 	time.Sleep(time.Second * 10)
 	for i, val := range imagesStore {
-
 		DownloadImage(i, imageService, val)
-
 	}
 	fmt.Println("Download file stop")
 	fmt.Println("Get images start")
 	time.Sleep(time.Second * 2)
-	succesCount := 0
-	var m sync.Mutex
-	for i := 0; i < 1000; i++ {
-		go GetImages(i, imageService, succesCount, m)
+
+	for i := 0; i < 101; i++ {
+		go GetImages(i, imageService)
 	}
 	time.Sleep(time.Second * 4)
-	fmt.Println("successfully getting images", succesCount)
 
 }
 
-func GetImages(i int, imageService image.ImageServiceClient, succesCount int, m sync.Mutex) {
+func GetImages(i int, imageService image.ImageServiceClient) {
 	fmt.Printf("getImages gorutine %d start\n", i)
-	defer fmt.Printf("getImages gorutine %d stop\n", i)
 	_, err := imageService.GetImages(context.Background(), &image.Empty{})
+	fmt.Printf("getImages gorutine %d stop error %v\n", i, err)
+
 	if err != nil {
 		return
 	}
-	m.Lock()
-	succesCount++
-	m.Unlock()
 	fmt.Printf("get images from gorutine %d\n", i)
 }
 
@@ -75,6 +68,7 @@ func DownloadImage(i int, imageService image.ImageServiceClient, fileName string
 	fmt.Printf("download gorutine %d start\n", i)
 	defer fmt.Printf("download gorutine %d stop\n", i)
 	ImageFolder := "./download"
+	// server := grpc.MaxConcurrentStreams(10)
 	stream, err := imageService.DownloadFile(context.Background(), &image.ImageInfo{
 		FileName: fileName})
 	fmt.Printf("download gorutine %d connect error %v\n", i, err)
