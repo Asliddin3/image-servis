@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	gatherTime        = 2 * time.Second
+	gatherTime        = 1 * time.Second
 	maxUploadDownload = 10
 	maxGettingImages  = 100
 )
@@ -64,18 +64,18 @@ func Run(cfg *config.Config) {
 	if err != nil {
 		l.Fatal(fmt.Errorf("app - Run - grpcClient.New: %w", err))
 	}
-	limiterUploadDownload := &rateLimiterInterceptor{}
-	limiterImagesList := &rateLimiterInterceptor{}
+	limiterStream := &rateLimiterInterceptor{}
+	limiterUnary := &rateLimiterInterceptor{}
 
-	limiterUploadDownload.TokenBucket = ratelimit.NewBucket(gatherTime, int64(maxUploadDownload))
-	limiterImagesList.TokenBucket = ratelimit.NewBucket(gatherTime, int64(maxGettingImages))
+	limiterStream.TokenBucket = ratelimit.NewBucket(gatherTime, int64(maxUploadDownload))
+	limiterUnary.TokenBucket = ratelimit.NewBucket(gatherTime, int64(maxGettingImages))
 
 	c := grpc.NewServer(
 		grpc_middleware.WithUnaryServerChain(
-			grpc_ratelimit.UnaryServerInterceptor(limiterImagesList),
+			grpc_ratelimit.UnaryServerInterceptor(limiterUnary),
 		),
 		grpc_middleware.WithStreamServerChain(
-			grpc_ratelimit.StreamServerInterceptor(limiterUploadDownload),
+			grpc_ratelimit.StreamServerInterceptor(limiterStream),
 		),
 	)
 

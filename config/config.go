@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/cast"
 )
 
@@ -22,6 +23,7 @@ type Config struct {
 }
 
 func LoadConfig() *Config {
+	_ = godotenv.Load(".env")
 	c := &Config{}
 	c.Environment = cast.ToString(getOrReturnDefault("ENVIRONMENT", "develop"))
 	c.LogLevel = cast.ToString(getOrReturnDefault("LOG_LEVEL", "debug"))
@@ -32,7 +34,7 @@ func LoadConfig() *Config {
 	c.PostgresPassword = cast.ToString(getOrReturnDefault("POSTGRES_PASSWORD", "compos1995"))
 	c.ImageServiceHost = cast.ToString(getOrReturnDefault("IMAGE_SERVICE_HOST", "localhost"))
 	c.ImageServicePort = cast.ToString(getOrReturnDefault("IMAGE_SERVICE_PORT", "7000"))
-	c.ImagePath = cast.ToString(getOrReturnDefault("IMAGE_PATH","../../../img"))
+	c.ImagePath = cast.ToString(getOrReturnDefault("IMAGE_PATH", "../../../img"))
 	c.PGXPoolMax = cast.ToInt(getOrReturnDefault("PGX_POOL_MAX", 2))
 
 	return c

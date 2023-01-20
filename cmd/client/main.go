@@ -34,64 +34,41 @@ func main() {
 	imageService := image.NewImageServiceClient(conn)
 	fmt.Println("Upload file start")
 	time.Sleep(time.Second * 2)
-	var wg sync.WaitGroup
 	for i, val := range imagesStore {
-		wg.Add(1)
-		go func(wg sync.WaitGroup, i int) {
-			UploadImage(i, imageService, val)
-			defer wg.Done()
-		}(wg, i)
+		go UploadImage(i, imageService, val)
 	}
 	fmt.Println("Upload file stop")
 	fmt.Println("Download file start")
-	time.Sleep(time.Second * 5)
+	time.Sleep(time.Second * 10)
 	for i, val := range imagesStore {
-		wg.Add(1)
-		go func(wg sync.WaitGroup, i int) {
-			DownloadImage(i, imageService, val)
-			defer wg.Done()
-		}(wg, i)
+
+		DownloadImage(i, imageService, val)
+
 	}
 	fmt.Println("Download file stop")
 	fmt.Println("Get images start")
 	time.Sleep(time.Second * 2)
-
-	// downloadFolder := "./download"
-	// for _, val := range imagesStore {
-	// 	path := fmt.Sprintf("%s/%s", downloadFolder, val)
-	// 	err = os.Remove(path)
-	// 	if err != nil {
-	// 		fmt.Println("error removeing file")
-	// 		return
-	// 	}
-	// 	path = fmt.Sprintf("%s/%s", downloadFolder, val)
-	// 	err = os.Remove(path)
-	// 	if err != nil {
-	// 		fmt.Println("error removeing file")
-	// 		return
-	// 	}
-	// }
-	// for i := 0; i < 1000; i++ {
-	// 	wg.Add(1)
-	// 	go func(wg sync.WaitGroup, i int) {
-	// 		GetImages(i, imageService)
-	// 		defer wg.Done()
-	// 	}(wg, i)
-	// }
-	// wg.Wait()
-	// fmt.Println("Get images stop")
+	succesCount := 0
+	var m sync.Mutex
+	for i := 0; i < 1000; i++ {
+		go GetImages(i, imageService, succesCount, m)
+	}
+	time.Sleep(time.Second * 4)
+	fmt.Println("successfully getting images", succesCount)
 
 }
 
-func GetImages(i int, imageService image.ImageServiceClient) {
+func GetImages(i int, imageService image.ImageServiceClient, succesCount int, m sync.Mutex) {
 	fmt.Printf("getImages gorutine %d start\n", i)
 	defer fmt.Printf("getImages gorutine %d stop\n", i)
 	_, err := imageService.GetImages(context.Background(), &image.Empty{})
 	if err != nil {
 		return
 	}
+	m.Lock()
+	succesCount++
+	m.Unlock()
 	fmt.Printf("get images from gorutine %d\n", i)
-
 }
 
 func DownloadImage(i int, imageService image.ImageServiceClient, fileName string) {
@@ -100,7 +77,7 @@ func DownloadImage(i int, imageService image.ImageServiceClient, fileName string
 	ImageFolder := "./download"
 	stream, err := imageService.DownloadFile(context.Background(), &image.ImageInfo{
 		FileName: fileName})
-	fmt.Printf("download gorutine %d connect\n error %v", i, err)
+	fmt.Printf("download gorutine %d connect error %v\n", i, err)
 
 	if err != nil {
 		fmt.Println("error downloading", err)

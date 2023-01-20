@@ -37,8 +37,8 @@ func TestClientUploadImage(t *testing.T) {
 	imageServiceHost := "localhost"
 	imageServicePort := "7000"
 	testImageFolder := "../../../tmp"
-	fileName := "gohper.jpg"
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", imageServiceHost, imageServicePort), grpc.WithInsecure(), grpc.MaxConcurrentStreams(10))
+	fileName := "gopher1.png"
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", imageServiceHost, imageServicePort), grpc.WithInsecure())
 	require.NoError(t, err)
 	imageService := image.NewImageServiceClient(conn)
 	imagePath := fmt.Sprintf("%s/%s", testImageFolder, fileName)
@@ -94,7 +94,7 @@ func TestClientDownloadImage(t *testing.T) {
 	testImageFolder := "../../../tmp"
 	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", imageServiceHost, imageServicePort), grpc.WithInsecure())
 	require.NoError(t, err)
-	fileName := "laptop.jpg"
+	fileName := "laptop0.jpg"
 	imageService := image.NewImageServiceClient(conn)
 	stream, err := imageService.DownloadFile(context.Background(), &image.ImageInfo{
 		FileName: fileName})

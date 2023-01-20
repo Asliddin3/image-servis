@@ -7,6 +7,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/grpc-ecosystem/go-grpc-middleware v1.3.0
 	github.com/jackc/pgx/v4 v4.17.2
+	github.com/joho/godotenv v1.4.0
 	github.com/juju/ratelimit v1.0.2
 	github.com/rs/zerolog v1.28.0
 	github.com/spf13/cast v1.5.0
